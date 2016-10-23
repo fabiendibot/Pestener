@@ -179,7 +179,7 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
     param (
 
         [String]$TestPath,
-        [String]$ImageName "Pestener",
+        [String]$ImageName = "Pestener",
         [Switch]$OutputXML,
         [Switch]$ShouldExit,
         [String]$Workspace,
