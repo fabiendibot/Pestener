@@ -37,27 +37,49 @@ Function Test-System {
 
 Function New-Container {
 
-    param (
-        []
-    )
-
 }
 
 Function New-DockerFile {
 
     param (
         [int]$Path,
+        [int]$TestPath,
         [int]$Version = 'NanoServer',
         [int]$Maintener,
-        [int]$MaintenerMail
+        [int]$MaintenerMail,
+        [Switch]$OutputXML
     )
     
     Try {
-        
-        $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile'
+        # Creation of the Dockerfile
         # test Windows version
+    
+        $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile' -ErrorAction SilentlyContinue
+        $TestFullPath = Join-Path -Path $TestPath -ChildPath Unit.tests.ps1 -ErrorAction SilentlyContinue
+        
+        #Adding the OS Source
+        echo "FROM microsoft/$version" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
+
+        #Building the Pester command line
+        if ($OutputXML) {
+            $PesterCMD = $PesterCMD + "-OutPutXML NUnit.XML"
+        } 
+        #if ()
+
+        #Adding the Pester tests to be runned after the launch.
+        echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)"
+
+
     }
     
+}
 
+Function New-DockerImage {
+
+    param (
+        [Int]$Name = 'PesterImage'
+    )
+
+    docker build .
 
 }
