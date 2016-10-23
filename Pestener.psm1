@@ -1,4 +1,6 @@
-# Add file with licalized available
+
+
+
 Function Get-TestList {
 
     param (
@@ -128,10 +130,56 @@ Function Invoke-CutPesterFile {
 
 Function Start-Pestener {
 
+<#
+.SYNOPSIS
+Provides an enhanced utilization of the Pester framework. Thanks to the Docker
+ technology. It's easier to scale as much as you want in order to reduce the time
+ of your tests. This module will split your Pester tests file describe blocs in separated 
+ file. Each file will be run by Pester in his own container. Once it's done you choose
+ if you want to have the NUnit Exported or Not and if it needs to stop the build.
+Like that you can use this tools with things like TeamCity, Jenkins or TravisCI.
+ 
+.PARAMETER TestPath
+This parameter indicates the location of every Pester tests you want to be run.
+ 
+.PARAMETER imagename
+This is the name you want to use for the container image that you will build on the 
+Jenkins.
+ 
+.PARAMETER OutputXML
+This parameter will indicate to the script if you want it to export the XML file in the 
+mDocker mounted volume
+ 
+.PARAMETER ShouldExit
+This parameter will indicate to the script if it should generate an error code and use it
+in you CI solution.
+ 
+.PARAMETER CleanWorkspace
+This parameter will indicate to the script to clean the workspace at the startup of each new
+tests campaign.
+ 
+.PARAMETER DockerFilePath
+This is the full path of the DockerFile used to build the Docker image
+ 
+.PARAMETER From
+Which docker image should be used at first to build your own one.
+ 
+.PARAMETER Maintener
+The fullname of the maintener of the image
+
+.PARAMETER MaintenerMail
+The maintenet mail adress
+
+.EXAMPLE
+Import-Module Pestener
+Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -CleanWorkspace -DockerFilePath C:\Jenkins\Dockerfile -Maintener 'Fabien Dibot' -MaintenerMail fdibot@pwrshell.net
+
+#>
+
     param (
 
         [String]$TestPath,
-        [String]$ImageName,
+        [String]$ImageName "Pestener",
         [Switch]$OutputXML,
         [Switch]$ShouldExit,
         [String]$Workspace,
