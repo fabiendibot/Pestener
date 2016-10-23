@@ -1,0 +1,29 @@
+# See http://www.appveyor.com/docs/appveyor-yml for many more options
+ 
+# Skip on updates to the readme.
+# We can force this by adding [skip ci] or [ci skip] anywhere in commit message
+skip_commits:
+  message: /updated readme.*/
+
+
+install:
+  - cinst pester
+  - git clone https://github.com/fabiendibot/Pestener "C:\Program Files\WindowsPowerShell\Modules\Pestener"
+  - ps: winrm quickconfig -force
+# Install Docker
+  - ps: 
+    Install-Module -Name DockerMsftProvider -Repository PSGallery -Force -verbose
+    Install-Package -Name docker -ProviderName DockerMsftProvider -Verbose
+
+
+build: false
+
+ 
+test_script:
+# Invoke DSC configuration!
+  - ps:
+    Import-Module Pestener.psm1 -verbose
+    Start-Pestener -TestPath .\tests -OutPutXML -Workspace C:\Jenkins -CleanWorkspace -DockerFilePath Dockerfile -Maintener 'Fabien Dibot' -MaintenerMail fdibot@pwrshell.net
+ 
+deploy_script:
+  - ps: Get-Content .\Artifacts.txt | Foreach-Object { Push-AppveyorArtifact $_ }
