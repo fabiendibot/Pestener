@@ -3,7 +3,7 @@ Function Get-TestList {
 
     param (
         # Insert some test about this directory
-        [int]$Path,
+        [String]$Path,
         [Switch]$Recurse
     )
 
@@ -33,20 +33,37 @@ Function Test-System {
         return $false
     }
 
+
+
 }
 
-Function New-Container {
+Function Start-Container {
+
+    param (
+        [String]$MountPoint
+
+    )
+
+    # Each container should start and execute Pester script
+    # The container should be only a temporary one
+    # And the containter must print out verbose stuff
+    # The container must have local volume mounted to a local directory in order to stored XML NUnit file.
+
+    docker run -ti -v $($MountPoint):$($MountPoint) -rm <imagename>
 
 }
 
 Function New-DockerFile {
 
+    # if you need some container to connect a SQL Server
+    # Be sure that this SQL Server can be reached.
+    # If you want to have SQL Server available in the nano server, just build your own image :)
+
     param (
-        [int]$Path,
-        [int]$TestPath,
-        [int]$Version = 'NanoServer',
-        [int]$Maintener,
-        [int]$MaintenerMail,
+        [String]$Path,
+        [String]$from = 'microsoft/NanoServer',
+        [String]$Maintener,
+        [String]$MaintenerMail,
         [Switch]$OutputXML
     )
     
@@ -58,7 +75,7 @@ Function New-DockerFile {
         $TestFullPath = Join-Path -Path $TestPath -ChildPath Unit.tests.ps1 -ErrorAction SilentlyContinue
         
         #Adding the OS Source
-        echo "FROM microsoft/$version" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
+        echo "FROM $($from)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
 
         #Building the Pester command line
         if ($OutputXML) {
@@ -67,7 +84,7 @@ Function New-DockerFile {
         #if ()
 
         #Adding the Pester tests to be runned after the launch.
-        echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)"
+        echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
 
 
     }
@@ -77,9 +94,87 @@ Function New-DockerFile {
 Function New-DockerImage {
 
     param (
-        [Int]$Name = 'PesterImage'
+        #[Int]$Image = 'PesterImage',
+        [String]$Name
     )
 
-    docker build .
+    Try {
+        docker build . --name=$Name
+    }
+    Catch {
+        #Throw something
+    }
+
+}
+
+
+Function Invoke-CutPesterFile {
+
+    param (
+        [String]$Path,
+        [String]$Workplace
+    )
+
+    # This function will create a new file for each describe
+    Get-Content -LiteralPath $Path | ForEach-Object {
+
+        # Find a way to handle the fact that it's a bloc.
+        # Each find a bloc is finished, reg theses lines in a file.
+        # Make a folder for each one of the new file in workspace
+
+    }
+}
+
+
+Function Start-Pestener {
+
+    param (
+
+        [String]$TestPath,
+        [String]$ImageName,
+        [Switch]$OutputXML,
+        [Switch]$ShouldExit,
+        [String]$Workspace,
+        [Switch]$CleanWorkspace,
+        [String]$DockerFilePath,
+        [String]$from = 'microsoft/NanoServer',
+        [String]$Maintener,
+        [String]$MaintenerMail
+
+    )
+
+    # Building a list of every single pester test file
+    $FilesList = @()
+    Get-ChildItem -LiteralPath $TestPath -Recurse -File | ForEach-Object {
+
+        if ($PSItem.FullName -like "*.tests.ps1") {
+
+            $FilesList.Add($PSItem.FullName)
+
+        }
+
+    }
+
+    # Create file for each describe bloc :)
+    $FilesList | ForEach-Object {
+
+        Invoke-CutPesterFile -Path $PSItem -Workspace $Workspace
+
+    }
+
+    # Create the new docker file
+    New-DockerFile -Path $DockerFilePath -OutPutXML -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
+
+    # Build the new image
+    New-DockerImage -Name 'Pestener'
+
+    # Start a container for each Pester tests file
+    Get-ChildItem -LiteralPath $Workspace -Recurse -File | ForEach-Object {
+
+        $DirectoryName = $PSItem.split('\')[-2]
+        Start-Container -Mountpoint (Join-Path -Path 'C:\temp' -ChildPath $DirectoryName) 
+
+    }
+
 
 }
