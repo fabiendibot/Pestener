@@ -248,7 +248,7 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
         if (!($NoNewImage)) {
 
             # Create the new docker file
-            New-DockerFile -Path $DockerFilePath -OutPutXML -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
+            New-DockerFile -Path $DockerFilePath -OutPutXML -ShouldExit -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
 
             # Build the new image
             New-DockerImage -Name 'Pestener'
@@ -260,11 +260,12 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
         Get-ChildItem -LiteralPath $Workspace -Recurse -File | ForEach-Object {
 
             $DirectoryName = $PSItem.split('\')[-2]
+            Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
             Start-Container -Mountpoint (Join-Path -Path $workspace -ChildPath $DirectoryName) 
 
         }
     }
-    EBD {
+    END {
 
     }
 

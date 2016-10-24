@@ -24,13 +24,9 @@ Docker
 
 ## TO BE DONE 
 
-1. Finir de faire fonctionner l'existant (sur du basique)
-2. Choisir un modèle de licencing
-3. Corriger les problèmes de syntaxe dans le module
-4. Ajouter la possibilité de ne pas avoir à recréer le container si il existe (ça permettra de gagner du temps sur l'exécution du script)
-5. Mettre en place un build automatique
-     * Installation OpenJDK
-     * Installation Jenkins en silencieux
+1. Corriger les problèmes de syntaxe dans le module
+2. Ajouter la possibilité de ne pas avoir à recréer le container si il existe (ça permettra de gagner du temps sur l'exécution du script)
+3. Mettre en place un build automatique
      * Push automatique si succès dans PSGallery ?
-6. Add every single Pester possibility to be add to each new Pester File
+4. Add every single Pester possibility to be add to each new Pester File
 
