@@ -9,15 +9,12 @@ skip_commits:
 install:
   - cinst pester
   - git clone https://github.com/fabiendibot/Pestener "C:\Program Files\WindowsPowerShell\Modules\Pestener"
-  - ps: winrm quickconfig -force
 # Install Docker
   - ps: 
     Install-Module -Name DockerMsftProvider -Repository PSGallery -Force -verbose
     Install-Package -Name docker -ProviderName DockerMsftProvider -Verbose
 
-
 build: false
-
  
 test_script:
 # Invoke DSC configuration!

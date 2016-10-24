@@ -17,6 +17,11 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
 Creator: [Fabien Dibot](https://pwrshell.net) - [Twitter](https://twitter.com/fdibot)
 Licence Model: <to_be_done>
 
+# Links
+Pester
+Docker
+
+
 ## TO BE DONE 
 
 1. Finir de faire fonctionner l'existant (sur du basique)

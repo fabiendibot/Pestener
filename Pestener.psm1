@@ -8,50 +8,67 @@ Function Get-TestList {
         [String]$Path,
         [Switch]$Recurse
     )
-
-    Try {
-        # Insert some logical test for recurse or not :)
-        $TestList = Get-ChildItem -LiteralPath $Path -ErrorAction SilentlyContinue
+    BEGIN {
+        # Do some cleaning of maybe existing previous variables
+        Write-Verbose -Message "Cleaning variables"
+        Remove-Variable -Name $TestList
     }
-    Catch {
-        # Do some better catching on possible exceptions.
-        Throw $($_.Exception.Message)
+    PROCESS {
+        Try {
+            # Get all pester tests in the directory.
+            Write-Verbose -Message "Gathering a list of every Pester tests stored in $($Path)"
+            If ($Recurse) {
+                Write-Verbose -Message "Recursive mode requested. Go in $($path) depth "
+                $TestList = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue
+            }
+            else {
+                $TestList = Get-ChildItem -LiteralPath $Path -File -ErrorAction SilentlyContinue
+            }
+        }
+        Catch {
+            # To be done: Do some better catching on possible exceptions.
+            $TestList = $null
+            Write-Error -Message "$($_.Exception.Message)"
+        }
+
     }
-
-    Return $TestList
-
-}
-
-
-Function Test-System {
-
-    # Test if docker is running
-    # if no return a $false
-
-    if ((Get-Service Docker).status -eq 'running') {
-        Return $true
+    END {
+        Write-Verbose -Message "Returning the Pester tests list requested"
+        Return $TestList
     }
-    else {
-        return $false
-    }
-
-
 
 }
 
 Function Start-Container {
 
     param (
-        [String]$MountPoint
+        [String]$TestMount,
+        [String]$ThirdPartyTools,
+        [String]$workspace
 
     )
 
-    # Each container should start and execute Pester script
-    # The container should be only a temporary one
-    # And the containter must print out verbose stuff
-    # The container must have local volume mounted to a local directory in order to stored XML NUnit file.
-
-    docker run -ti -v $($MountPoint):$($MountPoint) -rm <imagename>
+    BEGIN {
+        # Nothing ATM
+    }
+    PROCESS {
+        Try {
+            # Each container should start and execute Pester script
+            # The container should be only a temporary one
+            # And the containter must print out verbose stuff
+            # The container must have local volume mounted to a local directory in order to stored XML NUnit file.
+            Write-Verbose -Message "Starting docker temporary container to launch tests stored in $($TestMount)"
+            docker run -ti -v $($TestMount):$($TestMount) $($workspace):$($Workspace) $($ThirdPartyTools):$($ThirdPartyTools) -rm Pestener
+        }
+        Catch {
+            Write-Error -Message "$($_.Exception.Message)"
+        }
+    }
+    END {
+        # Nothing atm
+    }
+    
+    
 
 }
 
@@ -66,45 +83,69 @@ Function New-DockerFile {
         [String]$from = 'microsoft/NanoServer',
         [String]$Maintener,
         [String]$MaintenerMail,
-        [Switch]$OutputXML
+        [Switch]$OutputXML,
+        [Switch]$ShouldExit
     )
     
-    Try {
-        # Creation of the Dockerfile
-        # test Windows version
-    
+    BEGIN {
+
+        Write-Verbose "Create some path for the script needs"
         $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile' -ErrorAction SilentlyContinue
         $TestFullPath = Join-Path -Path $TestPath -ChildPath Unit.tests.ps1 -ErrorAction SilentlyContinue
-        
-        #Adding the OS Source
-        echo "FROM $($from)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
-
-        #Building the Pester command line
-        if ($OutputXML) {
-            $PesterCMD = $PesterCMD + "-OutPutXML NUnit.XML"
-        } 
-        #if ()
-
-        #Adding the Pester tests to be runned after the launch.
-        echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
-
 
     }
+    PROCESS {
+
+        Try {
+
+            Write-Verbose -Message "Building the Pester command line."
+
+            #Building the Pester command line
+            if ($OutputXML) {
+                $PesterCMD = $PesterCMD + "-OutPutXML NUnit.XML"
+            } 
+            if ($ShouldExit) {
+                $PesterCMD = $PesterCMD + "-ShouldExit"
+            } 
+
+            Write-Verbose -Message "Starting creation of the Docker file in $($FullPath)"
+
+            #Adding informations in the Dockerfile
+            Write-Verbose -Message "Adding the 'FROM' information in $($FullPath)"
+            echo "FROM $($from)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
+
+            #Adding the Pester tests to be runned after the launch.
+            Write-Verbose -Message "Adding the PowerShell command that will be launched at the container start"
+            echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
+
+
+        }
+        Catch {
+
+            Write-Warning -Message "$($_.Exception.Message)"
+ 
+       }
+
+    }
+    END {
+
+    }
+    
     
 }
 
 Function New-DockerImage {
 
     param (
-        #[Int]$Image = 'PesterImage',
         [String]$Name
     )
 
     Try {
+        Write-Verbose -Message "Starting the Docker image build process."
         docker build . --name=$Name
     }
     Catch {
-        #Throw something
+        Write-Error -Message "Impossible to build the image. Error: $($_.Exception.Message)"
     }
 
 }
@@ -187,42 +228,48 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
         [String]$DockerFilePath,
         [String]$from = 'microsoft/NanoServer',
         [String]$Maintener,
-        [String]$MaintenerMail
+        [String]$MaintenerMail,
+        [Switch]$NoNewImage
 
     )
 
-    # Building a list of every single pester test file
-    $FilesList = @()
-    Get-ChildItem -LiteralPath $TestPath -Recurse -File | ForEach-Object {
+    BEGIN {
 
-        if ($PSItem.FullName -like "*.tests.ps1") {
+    }
+    PROCESS {
 
-            $FilesList.Add($PSItem.FullName)
+        # Create file for each describe bloc :)
+        Get-TestList -Path $TestPath | ForEach-Object {
+
+            Invoke-CutPesterFile -Path $PSItem -Workspace $Workspace
 
         }
 
+        if (!($NoNewImage)) {
+
+            # Create the new docker file
+            New-DockerFile -Path $DockerFilePath -OutPutXML -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
+
+            # Build the new image
+            New-DockerImage -Name 'Pestener'
+
+        }
+        
+
+        # Start a container for each Pester tests file
+        Get-ChildItem -LiteralPath $Workspace -Recurse -File | ForEach-Object {
+
+            $DirectoryName = $PSItem.split('\')[-2]
+            Start-Container -Mountpoint (Join-Path -Path $workspace -ChildPath $DirectoryName) 
+
+        }
     }
-
-    # Create file for each describe bloc :)
-    $FilesList | ForEach-Object {
-
-        Invoke-CutPesterFile -Path $PSItem -Workspace $Workspace
-
-    }
-
-    # Create the new docker file
-    New-DockerFile -Path $DockerFilePath -OutPutXML -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
-
-    # Build the new image
-    New-DockerImage -Name 'Pestener'
-
-    # Start a container for each Pester tests file
-    Get-ChildItem -LiteralPath $Workspace -Recurse -File | ForEach-Object {
-
-        $DirectoryName = $PSItem.split('\')[-2]
-        Start-Container -Mountpoint (Join-Path -Path 'C:\temp' -ChildPath $DirectoryName) 
+    EBD {
 
     }
 
 
 }
+
+
+Export-ModuleMember -Function Start-Pestener
