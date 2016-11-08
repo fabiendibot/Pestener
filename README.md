@@ -15,7 +15,7 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
 
 # Notes
 Creator: [Fabien Dibot](https://pwrshell.net) - [Twitter](https://twitter.com/fdibot)
-Licence Model: <to_be_done>
+Licence Model: MIT See licence file [here](https://github.com/fabiendibot/Pestener/LICENCE)
 
 # Links
 Pester
@@ -25,8 +25,7 @@ Docker
 ## TO BE DONE 
 
 1. Corriger les problèmes de syntaxe dans le module
-2. Ajouter la possibilité de ne pas avoir à recréer le container si il existe (ça permettra de gagner du temps sur l'exécution du script)
-3. Mettre en place un build automatique
+2. Mettre en place un build automatique
      * Push automatique si succès dans PSGallery ?
-4. Add every single Pester possibility to be add to each new Pester File
+3. Add every single Pester possibility to be add to each new Pester File
 
