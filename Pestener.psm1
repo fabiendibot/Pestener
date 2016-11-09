@@ -92,7 +92,6 @@ Function New-DockerFile {
         Write-Verbose "Create some path for the script needs"
         $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile' -ErrorAction SilentlyContinue
 
-
     }
     PROCESS {
 
@@ -143,6 +142,8 @@ Function New-DockerFile {
     
     
 }
+
+Function New-DockerFile {
 
     # if you need some container to connect a SQL Server
     # Be sure that this SQL Server can be reached.
