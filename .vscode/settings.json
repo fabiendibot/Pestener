@@ -1,0 +1,8 @@
+// Placez vos paramètres dans ce fichier pour remplacer les paramètres par défaut et les paramètres utilisateur.
+{
+    // Place your settings in this file to overwrite the default settings
+{
+    "files.autoSave": "afterDelay",
+    "window.zoomLevel": -2
+}
+}

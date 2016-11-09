@@ -11,7 +11,6 @@ Function Get-TestList {
     BEGIN {
         # Do some cleaning of maybe existing previous variables
         Write-Verbose -Message "Cleaning variables"
-        Remove-Variable -Name $TestList
     }
     PROCESS {
         Try {
@@ -44,7 +43,9 @@ Function Start-Container {
     param (
         [String]$TestMount,
         [String]$ThirdPartyTools,
-        [String]$Workspace
+        [String]$Workspace,
+        [String]$DockerPesterPath = 'c:\Pester',
+        [String]$DockerWorkspacePath = 'C:\Workspace'
 
     )
 
@@ -58,7 +59,7 @@ Function Start-Container {
             # And the containter must print out verbose stuff
             # The container must have local volume mounted to a local directory in order to stored XML NUnit file.
             Write-Verbose -Message "Starting docker temporary container to launch tests stored in $($TestMount)"
-            docker run -ti -v $($TestMount):c:\Pester -v $($workspace):C:\Workspace -v $($ThirdPartyTools):C:\ThirdPartyTools -rm Pestener
+            start-process -filepath "docker" -argumentlist "run -ti -v $($TestMount):$($DockerPesterPath) -v $($workspace):$($DockerWorkspacePath) pestener" -NoNewWindow
         }
         Catch {
             Write-Error -Message "$($_.Exception.Message)"
@@ -72,76 +73,6 @@ Function Start-Container {
 
 }
 
-Function New-DockerFile {
-
-    # if you need some container to connect a SQL Server
-    # Be sure that this SQL Server can be reached.
-    # If you want to have SQL Server available in the nano server, just build your own image :)
-
-    param (
-        [String]$Path,
-        [String]$from = 'microsoft/nanserver',
-        [String]$Maintener,
-        [String]$MaintenerMail,
-        [Switch]$OutputXML,
-        [Switch]$ShouldExit
-    )
-    
-    BEGIN {
-
-        Write-Verbose "Create some path for the script needs"
-        $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile' -ErrorAction SilentlyContinue
-
-    }
-    PROCESS {
-
-        Try {
-
-            Write-Verbose -Message "Building the Pester command line."
-
-            #Building the Pester command line
-            if ($OutputXML) {
-                $PesterCMD = $PesterCMD + "-OutputFormat LegacyNUnitXml -OutputFile C:\Workspace\Nunit.XML"
-            } 
-            if ($ShouldExit) {
-                $PesterCMD = $PesterCMD + "-ShouldExit"
-            } 
-
-            Write-Verbose -Message "Starting creation of the Docker file in $($FullPath)"
-
-            #Adding informations in the Dockerfile
-            Write-Verbose -Message "Adding the 'FROM' information in $($FullPath)"
-            echo "FROM $($from)" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue
-
-            #Building the folder structure.
-            Write-Verbose -Message "Building the folder structure"
-            echo "RUN mkdir C:\Pester" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-            echo "RUN mkdir C:\ThirdPartyTool" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-            echo "RUN mkdir C:\Workspace" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-
-            # Installing the Pester module
-            Write-Verbose -Message "Installing Pester module from PSGallery"
-            echo "RUN powershell.exe -ExecutionPolicy Bypass -Command 'Install-Module Pester -Force'" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-
-            #Adding the Pester tests to be runned after the launch.
-            Write-Verbose -Message "Adding the PowerShell command that will be launched at the container start"
-            echo "CMD powershell.exe -ExecutionPolicy Bypass -Command cd C:\Pester; Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-
-
-        }
-        Catch {
-
-            Write-Warning -Message "$($_.Exception.Message)"
- 
-       }
-
-    }
-    END {
-
-    }
-    
-    
-}
 
 Function New-DockerFile {
 
@@ -151,7 +82,7 @@ Function New-DockerFile {
 
     param (
         [String]$Path,
-        [String]$from = 'microsoft/nanserver',
+        [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
         [String]$MaintenerMail,
         [Switch]$OutputXML,
@@ -173,7 +104,7 @@ Function New-DockerFile {
 
             #Building the Pester command line
             if ($OutputXML) {
-                $PesterCMD = $PesterCMD + "-OutPutXML NUnit.XML"
+                $PesterCMD = $PesterCMD + "-OutputFormat LegacyNUnitXml -OutputFile C:\Pester\NUnit.XML "
             } 
             if ($ShouldExit) {
                 $PesterCMD = $PesterCMD + "-ShouldExit"
@@ -223,7 +154,7 @@ Function New-DockerImage {
 
     Try {
         Write-Verbose -Message "Starting the Docker image build process."
-        docker build -t Pestener .
+        docker build -t pestener .
     }
     Catch {
         Write-Error -Message "Impossible to build the image. Error: $($_.Exception.Message)"
@@ -336,22 +267,22 @@ The maintenet mail adress
 
 .EXAMPLE
 Import-Module Pestener
-Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -CleanWorkspace -DockerFile C:\Jenkins\Dockerfile -Maintener 'Fabien Dibot' -MaintenerMail fdibot@pwrshell.net
+Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -ShouldExit -Workspace D:\Git\Pestener -PesterTests D:\temp -DockerFile D:\Git\Pestener `
+               -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
 
 #>
 
     param (
 
-        [String]$TestPath,
-        [String]$Image = "Pestener",
+        [String]$PesterFile,
+        [String]$Image = "pestener",
         [Switch]$OutputXML,
         [Switch]$ShouldExit,
         [String]$Workspace,
         [String]$PesterTests,
-        [String]$ThirdPartyToolsFolder,
         [Switch]$CleanWorkspace,
         [String]$DockerFile,
-        [String]$from = 'microsoft/NanoServer',
+        [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
         [String]$MaintenerMail,
         [Switch]$NoNewImage
@@ -364,16 +295,24 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
     PROCESS {
 
         # Create file for each describe bloc :)
-        Get-TestList -Path $TestPath | ForEach-Object {
-        
+        Get-TestList -Path $PesterFile | ForEach-Object {
+
             # Gather the list of Describe block for each file 
-            Get-TestNameAndTestBlock -Path $PSItem | ForEach-Object {
+            Get-TestNameAndTestBlock -Content (Get-Content $PSItem.FullName -raw) | ForEach-Object {
                 
+                # Get rid of specials characters
+                if ($PSItem.Name -like '*$*') {
+                    $FolderName = $($PSItem.Name).replace('$', '')
+                 }
+                 else {
+                    $FolderName = $PSItem.Name
+                 }
+
                 # Create new pester  specific directory
-                New-Item -Path (Join-Path -path $Workspace -childpath $($PSItem.Name.replace(' ',''))) -ItemType Directory
+                New-Item -Path (Join-Path -path $PesterTests -childpath $FolderName.replace(' ','')) -ItemType Directory
 
                 # Create new test file in the previous direcotry
-                New-Item -Path (Join-Path -path (Join-Path -path $Workspace -childpath $($PSItem.Name.replace(' ',''))) -ChildPath "run.tests.ps1") -ItemType File -Value $($PSItem.content)
+                New-Item -Path (Join-Path -path (Join-Path -path $PesterTests -childpath $($PSItem.Name.replace(' ',''))) -ChildPath "run.tests.ps1") -ItemType File -Value $($PSItem.content)
 
             }
 
@@ -382,7 +321,7 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
         if (!($NoNewImage)) {
 
             # Create the new docker file
-            New-DockerFile -Path $DockerFile -OutPutXML -ShouldExit -From 'microsoft/nanoserver' -Maintener 'Fabien Dibot' -MaintenerMail 'fdibot@pwrshell.net'
+            New-DockerFile -Path $DockerFile -OutPutXML -ShouldExit -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
 
             # Build the new image
             New-DockerImage -Name $image
@@ -391,15 +330,16 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
         
 
         # Start a container for each Pester tests file
-        Get-ChildItem -LiteralPath $Workspace -Recurse -File | ForEach-Object {
+        # Bosser sur les définitions de variables qui ne sont pas claires !!!
+        Get-ChildItem -LiteralPath $PesterTests -Recurse -File | ForEach-Object {
 
-            $DirectoryName = $PSItem.split('\')[-2]
+            $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
             if ($ThirdPartyToolsFolder) {
                 Start-Container -Workspace $workspace -TestMount $DirectoryName -ThirdPartyTools $ThirdPartyToolsFolder
             }
             else {
-                Start-Container -Workspace $workspace -TestMount $DirectoryName 
+                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $PesterTests -ChildPath $DirectoryName )
             }
             
 
@@ -413,4 +353,4 @@ Start-Pestener -TestPath C:\temp\Pestertests -OutPutXML -Workspace C:\Jenkins -C
 }
 
 
-Export-ModuleMember -Function Start-Pestener
+Export-ModuleMember -Function *
