@@ -19,7 +19,7 @@ build: false
  
 test_script:
   - ps:
-    Import-Module Pestener.psm1 -verbose
+    Import-Module Pestener -verbose
     Start-Pestener -TestPath .\tests -OutPutXML -Workspace C:\Jenkins -CleanWorkspace -DockerFilePath Dockerfile -Maintener 'Fabien Dibot' -MaintenerMail fdibot@pwrshell.net
     Invoke-Pester .\tests\run.tests.ps1
  
