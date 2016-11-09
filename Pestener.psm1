@@ -91,7 +91,7 @@ Function New-DockerFile {
 
         Write-Verbose "Create some path for the script needs"
         $FullPath = Join-Path -Path $Path -ChildPath 'Dockerfile' -ErrorAction SilentlyContinue
-        $TestFullPath = Join-Path -Path $TestPath -ChildPath Unit.tests.ps1 -ErrorAction SilentlyContinue
+
 
     }
     PROCESS {
@@ -112,21 +112,21 @@ Function New-DockerFile {
 
             #Adding informations in the Dockerfile
             Write-Verbose -Message "Adding the 'FROM' information in $($FullPath)"
-            echo "FROM $($from)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue
+            echo "FROM $($from)" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue
 
             #Building the folder structure.
             Write-Verbose -Message "Building the folder structure"
-            echo "mkdir C:\Pester" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
-            echo "mkdir C:\ThirdPartyTool" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
-            echo "mkdir C:\workspace" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
+            echo "RUN mkdir C:\Pester" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
+            echo "RUN mkdir C:\ThirdPartyTool" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
+            echo "RUN mkdir C:\workspace" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
             # Installing the Pester module
             Write-Verbose -Message "Installing Pester module from PSGallery"
-            echo "CMD powershell.exe -ExecutionPolicy Bypass -Command 'Install-Module Pester -Force'" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
+            echo "RUN powershell.exe -ExecutionPolicy Bypass -Command 'Install-Module Pester -Force'" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
             #Adding the Pester tests to be runned after the launch.
             Write-Verbose -Message "Adding the PowerShell command that will be launched at the container start"
-            echo "CMD powershell.exe -ExecutionPolicy Bypass -Command Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -ErrorAction SilentlyContinue -Append
+            echo "CMD powershell.exe -ExecutionPolicy Bypass -Command cd C:\Pester; Invoke-Pester $($PesterCMD)" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
 
         }
@@ -152,7 +152,7 @@ Function New-DockerImage {
 
     Try {
         Write-Verbose -Message "Starting the Docker image build process."
-        docker build . --name=$Name
+        docker build -t Pestener .
     }
     Catch {
         Write-Error -Message "Impossible to build the image. Error: $($_.Exception.Message)"
