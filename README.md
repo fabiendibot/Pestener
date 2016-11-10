@@ -4,7 +4,7 @@
 
 # What is Pestener ?
 
-Pestener is a new way to fatorize the length of your [Pester](https://github.com/Pester) tests.
+Pestener is a new way to factorize the length of your [Pester](https://github.com/Pester) tests.
 Indeed, when you have so many [Pester](https://github.com/Pester) tests, it takes quite time for your build to finish.
 This module is here to help you reduce this time, thanks to Docker.
 
@@ -16,8 +16,7 @@ Right now, there are limitations.
 
 # Need some examples ?
 Import-Module Pestener
-Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -ShouldExit -Workspace D:\Git\Pestener -PesterTests D:\temp -DockerFile D:\Git\Pestener `
-               -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
+``Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -ShouldExit -Workspace D:\Git\Pestener -PesterTests D:\temp -DockerFile D:\Git\Pestener -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"``
 
 # Notes
 Creator: [Fabien Dibot](https://pwrshell.net) - [Twitter](https://twitter.com/fdibot)
