@@ -18,6 +18,7 @@ Right now, there are limitations.
 
 ## Need some examples ?
 ``Import-Module Pestener``
+
 ``Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -ShouldExit -Workspace D:\Git\Pestener -PesterTests D:\temp -DockerFile D:\Git\Pestener -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"``
 
 ## Notes
@@ -25,14 +26,5 @@ Creator: [Fabien Dibot](https://pwrshell.net) - [Twitter](https://twitter.com/fd
 Licence Model: MIT See licence file [here](https://github.com/fabiendibot/Pestener/LICENCE)
 
 ## Links
-Pester
-Docker
-
-
-## TO BE DONE 
-
-1. Corriger les problèmes de syntaxe dans le module
-2. Mettre en place un build automatique
-     * Push automatique si succès dans PSGallery ?
-3. Add every single Pester possibility to be add to each new Pester File
-
+[Pester](https://github.com/Pester)
+[Docker](https://github.com/Pester)
