@@ -2,6 +2,8 @@
 
 
 Function Get-TestList {
+    [CmdletBinding()]
+
 
     param (
         # Insert some test about this directory
@@ -39,10 +41,9 @@ Function Get-TestList {
 }
 
 Function Start-Container {
-
+    [CmdletBinding()]
     param (
         [String]$TestMount,
-        [String]$ThirdPartyTools,
         [String]$Workspace,
         [String]$DockerPesterPath = 'c:\Pester',
         [String]$DockerWorkspacePath = 'C:\Workspace'
@@ -59,7 +60,12 @@ Function Start-Container {
             # And the containter must print out verbose stuff
             # The container must have local volume mounted to a local directory in order to stored XML NUnit file.
             Write-Verbose -Message "Starting docker temporary container to launch tests stored in $($TestMount)"
-            start-process -filepath "docker" -argumentlist "run -ti -v $($TestMount):$($DockerPesterPath) -v $($workspace):$($DockerWorkspacePath) pestener" -NoNewWindow
+            #$Scriptblock = [ScriptBlock]::Create('start-process -filepath "docker" -argumentlist "run -ti -v $TestMount:$DockerPesterPath -v $workspace:$DockerWorkspacePath pestener" -NoNewWindow -wait')
+            #Write-output $Scriptblock
+            #$DockerJob = Invoke-Command -AsJob -ScriptBlock $Scriptblock | Wait-Job
+            docker run -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | Out-Null
+            
+            Write-Output $DockerJob
         }
         Catch {
             Write-Error -Message "$($_.Exception.Message)"
@@ -75,7 +81,7 @@ Function Start-Container {
 
 
 Function New-DockerFile {
-
+    [CmdletBinding()]
     # if you need some container to connect a SQL Server
     # Be sure that this SQL Server can be reached.
     # If you want to have SQL Server available in the nano server, just build your own image :)
@@ -85,8 +91,8 @@ Function New-DockerFile {
         [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
         [String]$MaintenerMail,
-        [Switch]$OutputXML,
-        [Switch]$ShouldExit
+        [Switch]$OutputXML
+
     )
     
     BEGIN {
@@ -106,9 +112,9 @@ Function New-DockerFile {
             if ($OutputXML) {
                 $PesterCMD = $PesterCMD + "-OutputFormat LegacyNUnitXml -OutputFile C:\Pester\NUnit.XML "
             } 
-            if ($ShouldExit) {
-                $PesterCMD = $PesterCMD + "-ShouldExit"
-            } 
+            
+            $PesterCMD = $PesterCMD + "-EnableExit"
+
 
             Write-Verbose -Message "Starting creation of the Docker file in $($FullPath)"
 
@@ -119,12 +125,11 @@ Function New-DockerFile {
             #Building the folder structure.
             Write-Verbose -Message "Building the folder structure"
             echo "RUN mkdir C:\Pester" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-            echo "RUN mkdir C:\ThirdPartyTool" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
             echo "RUN mkdir C:\workspace" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
             # Installing the Pester module
-            Write-Verbose -Message "Installing Pester module from PSGallery"
-            echo "RUN powershell.exe -ExecutionPolicy Bypass -Command 'Install-Module Pester -Force'" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
+            #Write-Verbose -Message "Installing Pester module from PSGallery"
+            #echo "RUN powershell.exe -ExecutionPolicy Bypass -Command 'Install-Module Pester -Force'" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
             #Adding the Pester tests to be runned after the launch.
             Write-Verbose -Message "Adding the PowerShell command that will be launched at the container start"
@@ -147,7 +152,7 @@ Function New-DockerFile {
 }
 
 Function New-DockerImage {
-
+    [CmdletBinding()]
     param (
         [String]$Name
     )
@@ -183,9 +188,46 @@ Function Get-TestNameAndTestBlock {
 	$ast = Get-ASTFromInput -Content $Content
 	$commandAST = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)    
 	$output = @()
-	$describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+    $DescribesTreated = @()
 
-	if ($describeASTs) {
+    $ModuleScopeASTs = $commandAST | ? { $PSItem.GetCommandName() -eq 'InModuleScope' }
+    $describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+
+    # InmoduleScope
+    if ($ModuleScopeASTS) {
+        Foreach ($ModuleScope in $ModuleScopeASTs) {
+            $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'InModuleScope'}
+            
+            # Check if Descibes stored in InModuleScope
+            if ($ModuleScope.Extent.Text -match "Describe+.*") { 
+                
+                $TempAST = Get-ASTFromInput -Content $ModuleScope.Extent.Text
+                $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
+                $TempdescribeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+                
+                Switch -Exact ($TempdescribeASTs.StringConstantType ) {
+			
+				    'DoubleQuoted' {  
+					    $DescribesTreated += $($ExecutionContext.InvokeCommand.ExpandString($TempdescribeASTs.Value)) 
+					    break
+				    }
+				    'SingleQuoted' {
+					    # if the test name is a single quoted string
+					    $DescribesTreated += $($TempdescribeASTs.Value)
+					    break
+				    }
+                }
+            }
+
+            $output += New-Object -TypeName PSObject -Property @{
+                Name = $($InModuleScopeElement.Value)
+                        Content = $($ModuleScope.Extent.Text) }
+            break
+        }
+    }
+
+    # Describes
+  	if ($describeASTs) {
 		foreach ($describeAST in $describeASTs) {
 
 			$TestNameElement = $describeAST.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'Describe'}
@@ -193,19 +235,24 @@ Function Get-TestNameAndTestBlock {
 			
 				'DoubleQuoted' {
 					# if the test name is a double quoted string
-					$output += New-Object -typename PSObject -property @{
-						#Add the test name as key and testBlock string as value 
-						Name = $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))
-                        Content = $($describeAST.Extent.Text)
+                    if ($DescribesTreated -contains $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))) {
+					    $output += New-Object -typename PSObject -property @{
+						    #Add the test name as key and testBlock string as value 
+                        
+						    Name = $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))
+                            Content = $($describeAST.Extent.Text)
+                        }
 					}
 					break
 				}
 				'SingleQuoted' {
 					# if the test name is a single quoted string
-					$output += New-Object -typename PSObject -property @{
-						Name = $($TestNameElement.Value)
-                        Content = $($describeAST.Extent.Text)
-					}
+                    if ($DescribesTreated -contains $($TestNameElement.Value)) {
+					    $output += New-Object -typename PSObject -property @{
+						    Name = $($TestNameElement.Value)
+                            Content = $($describeAST.Extent.Text)
+					    }
+                    }
 					break
 				}
 				default {
@@ -215,16 +262,16 @@ Function Get-TestNameAndTestBlock {
 			}
 
 		} # end foreach block
-        return $output
 	}
 	else {
 		throw 'Describe block not found in the Test Body.'
 	}
-	
+
+	Return $Output
 }
 
 Function Start-Pestener {
-
+[CmdletBinding()]
 <#
 .SYNOPSIS
 Provides an enhanced utilization of the Pester framework. Thanks to the Docker
@@ -244,14 +291,7 @@ Jenkins.
 .PARAMETER OutputXML
 This parameter will indicate to the script if you want it to export the XML file in the 
 mDocker mounted volume
- 
-.PARAMETER ShouldExit
-This parameter will indicate to the script if it should generate an error code and use it
-in you CI solution.
- 
-.PARAMETER CleanWorkspace
-This parameter will indicate to the script to clean the workspace at the startup of each new
-tests campaign.
+
  
 .PARAMETER DockerFile
 This is the full path of the DockerFile used to build the Docker image
@@ -267,8 +307,7 @@ The maintenet mail adress
 
 .EXAMPLE
 Import-Module Pestener
-Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -ShouldExit -Workspace D:\Git\Pestener -PesterTests D:\temp -DockerFile D:\Git\Pestener `
-               -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
+Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Workspace D:\Git\Pestener -TestPath D:\temp -DockerFile D:\Git\Pestener -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
 
 #>
 
@@ -277,15 +316,13 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -Shoul
         [String]$PesterFile,
         [String]$Image = "pestener",
         [Switch]$OutputXML,
-        [Switch]$ShouldExit,
         [String]$Workspace,
-        [String]$PesterTests,
-        [Switch]$CleanWorkspace,
+        [String]$TestPath,
         [String]$DockerFile,
         [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
         [String]$MaintenerMail,
-        [Switch]$NoNewImage
+        [Switch]$NewImage
 
     )
 
@@ -309,16 +346,16 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -Shoul
                  }
 
                 # Create new pester  specific directory
-                New-Item -Path (Join-Path -path $PesterTests -childpath $FolderName.replace(' ','')) -ItemType Directory
+                New-Item -Path (Join-Path -path $TestPath -childpath $FolderName.replace(' ','')) -ItemType Directory -Force | Out-Null
 
                 # Create new test file in the previous direcotry
-                New-Item -Path (Join-Path -path (Join-Path -path $PesterTests -childpath $($PSItem.Name.replace(' ',''))) -ChildPath "run.tests.ps1") -ItemType File -Value $($PSItem.content)
+                New-Item -Path (Join-Path -path (Join-Path -path $TestPath -childpath $($PSItem.Name.replace(' ',''))) -ChildPath "run.tests.ps1") -ItemType File -Value $($PSItem.content) -Force | Out-Null
 
             }
 
         }
 
-        if (!($NoNewImage)) {
+        if ($NewImage) {
 
             # Create the new docker file
             New-DockerFile -Path $DockerFile -OutPutXML -ShouldExit -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
@@ -331,17 +368,12 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -Shoul
 
         # Start a container for each Pester tests file
         # Bosser sur les définitions de variables qui ne sont pas claires !!!
-        Get-ChildItem -LiteralPath $PesterTests -Recurse -File | ForEach-Object {
+        Get-ChildItem -LiteralPath $TestPath -Recurse -File | ForEach-Object {
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
-            if ($ThirdPartyToolsFolder) {
-                Start-Container -Workspace $workspace -TestMount $DirectoryName -ThirdPartyTools $ThirdPartyToolsFolder
-            }
-            else {
-                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $PesterTests -ChildPath $DirectoryName )
-            }
-            
+
+            Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
 
         }
     }
