@@ -188,9 +188,46 @@ Function Get-TestNameAndTestBlock {
 	$ast = Get-ASTFromInput -Content $Content
 	$commandAST = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)    
 	$output = @()
-	$describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+    $DescribesTreated = @()
 
-	if ($describeASTs) {
+    $ModuleScopeASTs = $commandAST | ? { $PSItem.GetCommandName() -eq 'InModuleScope' }
+    $describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+
+    # InmoduleScope
+    if ($ModuleScopeASTS) {
+        Foreach ($ModuleScope in $ModuleScopeASTs) {
+            $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'InModuleScope'}
+            
+            # Check if Descibes stored in InModuleScope
+            if ($ModuleScope.Extent.Text -match "Describe+.*") { 
+                
+                $TempAST = Get-ASTFromInput -Content $ModuleScope.Extent.Text
+                $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
+                $TempdescribeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+                
+                Switch -Exact ($TempdescribeASTs.StringConstantType ) {
+			
+				    'DoubleQuoted' {  
+					    $DescribesTreated += $($ExecutionContext.InvokeCommand.ExpandString($TempdescribeASTs.Value)) 
+					    break
+				    }
+				    'SingleQuoted' {
+					    # if the test name is a single quoted string
+					    $DescribesTreated += $($TempdescribeASTs.Value)
+					    break
+				    }
+                }
+            }
+
+            $output += New-Object -TypeName PSObject -Property @{
+                Name = $($InModuleScopeElement.Value)
+                        Content = $($ModuleScope.Extent.Text) }
+            break
+        }
+    }
+
+    # Describes
+  	if ($describeASTs) {
 		foreach ($describeAST in $describeASTs) {
 
 			$TestNameElement = $describeAST.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'Describe'}
@@ -198,19 +235,24 @@ Function Get-TestNameAndTestBlock {
 			
 				'DoubleQuoted' {
 					# if the test name is a double quoted string
-					$output += New-Object -typename PSObject -property @{
-						#Add the test name as key and testBlock string as value 
-						Name = $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))
-                        Content = $($describeAST.Extent.Text)
+                    if ($DescribesTreated -contains $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))) {
+					    $output += New-Object -typename PSObject -property @{
+						    #Add the test name as key and testBlock string as value 
+                        
+						    Name = $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))
+                            Content = $($describeAST.Extent.Text)
+                        }
 					}
 					break
 				}
 				'SingleQuoted' {
 					# if the test name is a single quoted string
-					$output += New-Object -typename PSObject -property @{
-						Name = $($TestNameElement.Value)
-                        Content = $($describeAST.Extent.Text)
-					}
+                    if ($DescribesTreated -contains $($TestNameElement.Value)) {
+					    $output += New-Object -typename PSObject -property @{
+						    Name = $($TestNameElement.Value)
+                            Content = $($describeAST.Extent.Text)
+					    }
+                    }
 					break
 				}
 				default {
@@ -220,12 +262,12 @@ Function Get-TestNameAndTestBlock {
 			}
 
 		} # end foreach block
-        return $output
 	}
 	else {
 		throw 'Describe block not found in the Test Body.'
 	}
-	
+
+	Return $Output
 }
 
 Function Start-Pestener {
@@ -249,10 +291,7 @@ Jenkins.
 .PARAMETER OutputXML
 This parameter will indicate to the script if you want it to export the XML file in the 
 mDocker mounted volume
- 
-.PARAMETER CleanWorkspace
-This parameter will indicate to the script to clean the workspace at the startup of each new
-tests campaign.
+
  
 .PARAMETER DockerFile
 This is the full path of the DockerFile used to build the Docker image
@@ -279,7 +318,6 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         [Switch]$OutputXML,
         [String]$Workspace,
         [String]$TestPath,
-        [Switch]$CleanWorkspace,
         [String]$DockerFile,
         [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
