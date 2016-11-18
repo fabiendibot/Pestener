@@ -2,6 +2,8 @@
 
 
 Function Get-TestList {
+    [CmdletBinding()]
+
 
     param (
         # Insert some test about this directory
@@ -39,7 +41,7 @@ Function Get-TestList {
 }
 
 Function Start-Container {
-
+    [CmdletBinding()]
     param (
         [String]$TestMount,
         [String]$ThirdPartyTools,
@@ -75,7 +77,7 @@ Function Start-Container {
 
 
 Function New-DockerFile {
-
+    [CmdletBinding()]
     # if you need some container to connect a SQL Server
     # Be sure that this SQL Server can be reached.
     # If you want to have SQL Server available in the nano server, just build your own image :)
@@ -119,7 +121,6 @@ Function New-DockerFile {
             #Building the folder structure.
             Write-Verbose -Message "Building the folder structure"
             echo "RUN mkdir C:\Pester" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
-            echo "RUN mkdir C:\ThirdPartyTool" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
             echo "RUN mkdir C:\workspace" | Out-File -FilePath $FullPath -Encoding utf8 -ErrorAction SilentlyContinue -Append
 
             # Installing the Pester module
@@ -147,7 +148,7 @@ Function New-DockerFile {
 }
 
 Function New-DockerImage {
-
+    [CmdletBinding()]
     param (
         [String]$Name
     )
@@ -224,7 +225,7 @@ Function Get-TestNameAndTestBlock {
 }
 
 Function Start-Pestener {
-
+[CmdletBinding()]
 <#
 .SYNOPSIS
 Provides an enhanced utilization of the Pester framework. Thanks to the Docker
@@ -335,12 +336,9 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\DSC.tests.ps1 -OutputXML -Shoul
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
-            if ($ThirdPartyToolsFolder) {
-                Start-Container -Workspace $workspace -TestMount $DirectoryName -ThirdPartyTools $ThirdPartyToolsFolder
-            }
-            else {
-                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $PesterTests -ChildPath $DirectoryName )
-            }
+
+            Start-Container -Workspace $workspace -TestMount (Join-Path -Path $PesterTests -ChildPath $DirectoryName )
+
             
 
         }
