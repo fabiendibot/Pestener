@@ -198,23 +198,24 @@ Function Get-TestNameAndTestBlock {
     if ($ModuleScopeASTS) {
         Foreach ($ModuleScope in $ModuleScopeASTs) {
             $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'InModuleScope'}
-            
+
             # Check if Descibes stored in InModuleScope
             if ($ModuleScope.Extent.Text -match "Describe+.*") { 
-                Write-Verbose -Message "Describe block found! -> $($matches[0])"
-
-                $TempAST = Get-ASTFromInput -Content $ModuleScope.Extent.Text
-                $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
-                $TempdescribeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
                 
-                Switch -Exact ($TempdescribeASTs.StringConstantType ) {
+                $TempAST = Get-ASTFromInput -Content $($ModuleScope.Extent.Text)
+                $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
+                $TempdescribeASTs = $commandTempAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+                
+                $TempdescribeASTs | Out-File D:\temp\truc.txt
+
+                Switch -Exact ($TempdescribeASTs.CommandElements.StringConstantType) {
 			
 				    'DoubleQuoted' {  
 					    $DescribesTreated += $($ExecutionContext.InvokeCommand.ExpandString($TempdescribeASTs.Value)) 
 				    }
 				    'SingleQuoted' {
 					    # if the test name is a single quoted string
-					    $DescribesTreated += $($TempdescribeASTs.Value)
+					    $DescribesTreated += $($TempdescribeASTs.CommandElements.value[1])
 				    }
                 }
             }
@@ -392,7 +393,7 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
 
-            Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
+           # Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
 
         }
     }
