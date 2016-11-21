@@ -63,7 +63,7 @@ Function Start-Container {
             #$Scriptblock = [ScriptBlock]::Create('start-process -filepath "docker" -argumentlist "run -ti -v $TestMount:$DockerPesterPath -v $workspace:$DockerWorkspacePath pestener" -NoNewWindow -wait')
             #Write-output $Scriptblock
             #$DockerJob = Invoke-Command -AsJob -ScriptBlock $Scriptblock | Wait-Job
-            docker run -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | Out-Null
+            docker run -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | out-null
             
             Write-Output $DockerJob
         }
@@ -194,34 +194,52 @@ Function Get-TestNameAndTestBlock {
     $describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
 
     # InmoduleScope
+    $i = 0
     if ($ModuleScopeASTS) {
         Foreach ($ModuleScope in $ModuleScopeASTs) {
             $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'InModuleScope'}
-            
+
             # Check if Descibes stored in InModuleScope
             if ($ModuleScope.Extent.Text -match "Describe+.*") { 
                 
-                $TempAST = Get-ASTFromInput -Content $ModuleScope.Extent.Text
+                $TempAST = Get-ASTFromInput -Content $($ModuleScope.Extent.Text)
                 $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
-                $TempdescribeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+                $TempdescribeASTs = $commandTempAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
                 
-                Switch -Exact ($TempdescribeASTs.StringConstantType ) {
+                $TempdescribeASTs | Out-File D:\temp\truc.txt
+
+                Switch -Exact ($TempdescribeASTs.CommandElements.StringConstantType) {
 			
 				    'DoubleQuoted' {  
 					    $DescribesTreated += $($ExecutionContext.InvokeCommand.ExpandString($TempdescribeASTs.Value)) 
-					    break
 				    }
 				    'SingleQuoted' {
 					    # if the test name is a single quoted string
-					    $DescribesTreated += $($TempdescribeASTs.Value)
-					    break
+					    $DescribesTreated += $($TempdescribeASTs.CommandElements.value[1])
 				    }
                 }
             }
 
+            if ($DescribesTreated) {
+                Write-Output $DescribesTreated
+            }
+
+            # Change if InModuleScope double detected 
+            [Array]$Doubles = $output | ? { $_.Name -eq $($InModuleScopeElement.Value) }
+
+            
+            if ($doubles)  {
+                $Name = $($InModuleScopeElement.Value) + "$i"
+            }
+            else {
+                $Name = $($InModuleScopeElement.Value)
+            }
+
+            Write-verbose "File Name: $Name"
             $output += New-Object -TypeName PSObject -Property @{
-                Name = $($InModuleScopeElement.Value)
-                        Content = $($ModuleScope.Extent.Text) }
+                         Name = $Name
+                         Content = $($ModuleScope.Extent.Text) }
+            $i++
             break
         }
     }
@@ -235,7 +253,7 @@ Function Get-TestNameAndTestBlock {
 			
 				'DoubleQuoted' {
 					# if the test name is a double quoted string
-                    if ($DescribesTreated -contains $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))) {
+                    if ($DescribesTreated -notcontains $($ExecutionContext.InvokeCommand.ExpandString($TestNameElement.Value))) {
 					    $output += New-Object -typename PSObject -property @{
 						    #Add the test name as key and testBlock string as value 
                         
@@ -247,7 +265,7 @@ Function Get-TestNameAndTestBlock {
 				}
 				'SingleQuoted' {
 					# if the test name is a single quoted string
-                    if ($DescribesTreated -contains $($TestNameElement.Value)) {
+                    if ($DescribesTreated -notcontains $($TestNameElement.Value)) {
 					    $output += New-Object -typename PSObject -property @{
 						    Name = $($TestNameElement.Value)
                             Content = $($describeAST.Extent.Text)
@@ -333,7 +351,7 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
 
         # Create file for each describe bloc :)
         Get-TestList -Path $PesterFile | ForEach-Object {
-
+            Write-Verbose -Message "File theaten $($PSItem.FullName)"
             # Gather the list of Describe block for each file 
             Get-TestNameAndTestBlock -Content (Get-Content $PSItem.FullName -raw) | ForEach-Object {
                 
@@ -346,9 +364,11 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
                  }
 
                 # Create new pester  specific directory
+                Write-Verbose -Message "Folder: $($FolderName.replace(' ',''))"
                 New-Item -Path (Join-Path -path $TestPath -childpath $FolderName.replace(' ','')) -ItemType Directory -Force | Out-Null
 
                 # Create new test file in the previous direcotry
+                Write-Verbose -Message "File: $($PSItem.Name.replace(' ',''))"
                 New-Item -Path (Join-Path -path (Join-Path -path $TestPath -childpath $($PSItem.Name.replace(' ',''))) -ChildPath "run.tests.ps1") -ItemType File -Value $($PSItem.content) -Force | Out-Null
 
             }
@@ -356,9 +376,9 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         }
 
         if ($NewImage) {
-
+            
             # Create the new docker file
-            New-DockerFile -Path $DockerFile -OutPutXML -ShouldExit -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
+            New-DockerFile -Path $DockerFile -OutPutXML -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
 
             # Build the new image
             New-DockerImage -Name $image
@@ -373,7 +393,7 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
 
-            Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
+           # Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
 
         }
     }
