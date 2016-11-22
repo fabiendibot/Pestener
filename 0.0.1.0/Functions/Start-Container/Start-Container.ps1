@@ -4,7 +4,8 @@ Function Start-Container {
         [String]$TestMount,
         [String]$Workspace,
         [String]$DockerPesterPath = 'c:\Pester',
-        [String]$DockerWorkspacePath = 'C:\Workspace'
+        [String]$DockerWorkspacePath = 'C:\Workspace',
+        [switch]$wait
 
     )
 
@@ -21,9 +22,21 @@ Function Start-Container {
             #$Scriptblock = [ScriptBlock]::Create('start-process -filepath "docker" -argumentlist "run -ti -v $TestMount:$DockerPesterPath -v $workspace:$DockerWorkspacePath pestener" -NoNewWindow -wait')
             #Write-output $Scriptblock
             #$DockerJob = Invoke-Command -AsJob -ScriptBlock $Scriptblock | Wait-Job
-            docker run -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | out-null
             
-            Write-Output $DockerJob
+            if ($wait) {
+                # Last container to stop
+                docker run --name lastone -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | out-null
+                $a = 'Running'
+                while ($a -eq 'exited') {
+                    Start-Sleep -Seconds 1
+                    $a = docker inspect -f '{{.State.Status}}' lastone
+                }
+                Write-Verbose -Message "The last one container has stopped"
+            }
+            else {
+                docker run -d -v ${TestMount}:${DockerPesterPath} -v ${workspace}:${DockerWorkspacePath} pestener | out-null
+            }
+
         }
         Catch {
             Write-Error -Message "$($_.Exception.Message)"

@@ -98,12 +98,24 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
 
         # Start a container for each Pester tests file
         # Bosser sur les définitions de variables qui ne sont pas claires !!!
-        Get-ChildItem -LiteralPath $TestPath -Recurse -File | ForEach-Object {
+        
+        $Tests = Get-ChildItem -LiteralPath $TestPath -Recurse -File
+
+        # Add a $i variable to find the last started container and use a docker wait
+        $i = $Tests.count
+        $Tests | ForEach-Object {
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
             Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
 
-            Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName )
+            if ($i -eq 1) {
+                Write-Verbose -Message "Last Docker container"
+                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName ) -wait
+            }
+            else {
+                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName ) 
+            }
+            $i--
 
         }
     }
