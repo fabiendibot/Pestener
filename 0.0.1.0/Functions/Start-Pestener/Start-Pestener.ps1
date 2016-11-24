@@ -130,7 +130,6 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         $Tests | ForEach-Object {
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
-            $workspace = 'D:\Git\Pestener\0.0.1.0\'
             $testmount = Join-Path -Path $testpath -ChildPath $DirectoryName
             $runspace = [PowerShell]::Create()
             $null = $runspace.AddScript($scriptblock)
