@@ -58,6 +58,30 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
 
     }
     PROCESS {
+        $apartmentstate = "MTA"
+        [int]$MinRunspaces = 1
+        [int]$MaxRunspaces = 5
+        $showerrors  = $true
+        $pool                 = [RunspaceFactory]::CreateRunspacePool($MinRunspaces,$MaxRunspaces)
+        $pool.ApartmentState  = $apartmentstate
+        $pool.CleanupInterval =  (New-TimeSpan -Minutes 1)
+        $pool.Open()
+
+        $runspaces = [System.Collections.ArrayList]@()
+
+        $scriptblock = {
+            Param (
+                [string]$testmount,
+                [string]$workspace,
+                [String]$PesterPath = 'c:\Pester',
+                [String]$WorkspacePath = 'C:\Workspace'
+            )
+
+            try {
+                $cmdOutput = cmd /c "docker run -ti -v ${testmount}:${PesterPath} -v ${workspace}:${WorkspacePath} pestener" '2>&1'
+            }
+            catch {  }
+	    }   
 
         # Create file for each describe bloc :)
         Get-TestList -Path $PesterFile | ForEach-Object {
@@ -106,18 +130,37 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         $Tests | ForEach-Object {
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
-            Write-Verbose -Message "Starting a container for the tests $($DirectoryName)"
-
-            if ($i -eq 1) {
-                Write-Verbose -Message "Last Docker container"
-                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName ) -wait
-            }
-            else {
-                Start-Container -Workspace $workspace -TestMount (Join-Path -Path $TestPath -ChildPath $DirectoryName ) 
-            }
-            $i--
+            $workspace = 'D:\Git\Pestener\0.0.1.0\'
+            $testmount = Join-Path -Path $testpath -ChildPath $DirectoryName
+            $runspace = [PowerShell]::Create()
+            $null = $runspace.AddScript($scriptblock)
+            $null = $runspace.AddArgument($testmount)
+            $null = $runspace.AddArgument($workspace)
+            $runspace.RunspacePool = $pool
+            [void]$runspaces.Add([PSCustomObject]@{ Pipe = $runspace; Status = $runspace.BeginInvoke() })
 
         }
+
+        # Wait for runspaces to complete
+        while ($runspaces.Status.IsCompleted -notcontains $true) {}
+
+       <# if ($showerrors -eq $true) {
+        $errors =  [System.Collections.ArrayList]@()
+        foreach ($runspace in $runspaces) { 
+        [void]$errors.Add($runspace.Pipe.EndInvoke($runspace.Status))
+        $runspace.Pipe.Dispose()
+        }
+        $errors 
+        }
+        else {
+        foreach ($runspace in $runspaces ) { 
+        $null = $runspace.Pipe.EndInvoke($runspace.Status)
+        $runspace.Pipe.Dispose()
+        }
+        }#>
+
+        $pool.Close() 
+        $pool.Dispose()
     }
     END {
 
