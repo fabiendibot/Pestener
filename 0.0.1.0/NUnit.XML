@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="23" errors="0" failures="5" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2016-11-24" time="22:09:53">
+  <environment os-version="10.0.14393" clr-version="" user="ContainerAdministrator" nunit-version="2.5.8.0" cwd="C:\Pester" platform="Microsoft |C:\Windows|\Device\Harddisk1\Partition2" user-domain="User Manager" machine-name="9F355DC08AB5" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="Powershell" name="Pester" executed="True" result="Failure" success="False" time="12.3938" asserts="0">
+    <results>
+      <test-suite type="PowerShell" name="Pester manifest and changelog" executed="True" result="Failure" success="False" time="5.0981" asserts="0">
+        <results>
+          <test-case name="has a valid manifest" time="3.0366" asserts="0" success="False" result="Failure" executed="True">
+            <failure>
+              <message>Expected: the expression not to throw an exception. Message was {The specified module 'C:\Pester\Tests\Pester.psd1' was not loaded because no valid module file was found in any module directory.}
+    from C:\Pester\Tests\demo.tests.ps1:12 char:32
+    + ... :manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop ...
+    +                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</message>
+              <stack-trace>at line: 13 in C:\Pester\Tests\demo.tests.ps1
+13:         } | Should Not Throw
+</stack-trace>
+            </failure>
+          </test-case>
+          <test-case name="has a valid name in the manifest" time="0.7457" asserts="0" success="False" result="Failure" executed="True">
+            <failure>
+              <message>Expected: {Pester}
+But was:  {}</message>
+              <stack-trace>at line: 17 in C:\Pester\Tests\demo.tests.ps1
+17:         $script:manifest.Name | Should Be Pester
+</stack-trace>
+            </failure>
+          </test-case>
+          <test-case name="has a valid guid in the manifest" time="0.3594" asserts="0" success="False" result="Failure" executed="True">
+            <failure>
+              <message>Expected: {a699dea5-2c73-4616-a270-1f7abb777e71}
+But was:  {}</message>
+              <stack-trace>at line: 21 in C:\Pester\Tests\demo.tests.ps1
+21:         $script:manifest.Guid | Should Be 'a699dea5-2c73-4616-a270-1f7abb777e71'
+</stack-trace>
+            </failure>
+          </test-case>
+          <test-case name="has a valid version in the manifest" time="0.3377" asserts="0" success="False" result="Failure" executed="True">
+            <failure>
+              <message>Expected: value to not be empty</message>
+              <stack-trace>at line: 25 in C:\Pester\Tests\demo.tests.ps1
+25:         $script:manifest.Version -as [Version] | Should Not BeNullOrEmpty
+</stack-trace>
+            </failure>
+          </test-case>
+          <test-case name="has a valid version in the changelog" time="0.4714" asserts="0" success="False" result="Failure" executed="True">
+            <failure>
+              <message>Expected: value to not be empty</message>
+              <stack-trace>at line: 39 in C:\Pester\Tests\demo.tests.ps1
+39:         $script:changelogVersion                | Should Not BeNullOrEmpty
+</stack-trace>
+            </failure>
+          </test-case>
+          <test-case name="changelog and manifest versions are the same" time="0.1473" asserts="0" success="True" result="Success" executed="True" />
+        </results>
+      </test-suite>
+      <test-suite type="PowerShell" name="Clean treatment of the $error variable" executed="True" result="Success" success="True" time="3.597" asserts="0">
+        <results>
+          <test-case name="Performs a successful test" time="3.2225" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Did not add anything to the $error variable" time="0.3745" asserts="0" success="True" result="Success" executed="True" />
+        </results>
+      </test-suite>
+      <test-suite type="PowerShell" name="SafeCommands table" executed="True" result="Success" success="True" time="1.0944" asserts="0">
+        <results>
+          <test-case name="The SafeCommands table contains all commands that are called from the module" time="1.0944" asserts="0" success="True" result="Success" executed="True" />
+        </results>
+      </test-suite>
+      <test-suite type="PowerShell" name="Style rules" executed="True" result="Success" success="True" time="0.6299" asserts="0">
+        <results>
+          <test-case name="Pester source files contain no trailing whitespace" time="0.5072" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Pester Source Files all end with a newline" time="0.1227" asserts="0" success="True" result="Success" executed="True" />
+        </results>
+      </test-suite>
+      <test-suite type="PowerShell" name="ResolveTestScripts" executed="True" result="Success" success="True" time="1.9745" asserts="0">
+        <results>
+          <test-case name="Resolves non-wildcarded file paths regardless of whether the file ends with Tests.ps1" time="0.3594" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Finds only *.Tests.ps1 files when the path contains wildcards" time="0.3441" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Finds only *.Tests.ps1 files when the path refers to a directory and does not contain wildcards" time="0.1053" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Assigns empty array and hashtable to the Arguments and Parameters properties when none are specified by the caller" time="0.1658" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of a &quot;P&quot; key instead of &quot;Path&quot;" time="0.1604" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of an &quot;Arguments&quot; key in the dictionary" time="0.0961" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of an &quot;Args&quot; key in the dictionary" time="0.1662" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of an &quot;A&quot; key in the dictionary" time="0.1127" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of a &quot;Parameters&quot; key in the dictionary" time="0.0811" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Allows the use of a &quot;Params&quot; key in the dictionary" time="0.1087" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Throws an error if no Path is specified" time="0.1242" asserts="0" success="True" result="Success" executed="True" />
+          <test-case name="Throws an error if a Parameters key is used, but does not contain an IDictionary object" time="0.1505" asserts="0" success="True" result="Success" executed="True" />
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>
