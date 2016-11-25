@@ -1,9 +1,22 @@
 Function Get-TestList {
     [CmdletBinding()]
+<#
+.SYNOPSIS
+Return an objet containing every pester tests in the folder (and sub folders)
+ 
+.PARAMETER Path
+This parameter indicates the location of every Pester tests you want to be run.
+ 
+.PARAMETER Recurse
+If you want to go in depth :)
+ 
+.EXAMPLE
+Get-TestList -path D:\Pester\Tests -Recurse
 
-
+#>
     param (
         # Insert some test about this directory
+        [Parameter(Mandatory)]
         [String]$Path,
         [Switch]$Recurse
     )
@@ -17,10 +30,10 @@ Function Get-TestList {
             Write-Verbose -Message "Gathering a list of every Pester tests stored in $($Path)"
             If ($Recurse) {
                 Write-Verbose -Message "Recursive mode requested. Go in $($path) depth "
-                $TestList = Get-ChildItem -LiteralPath $Path -Recurse -File -ErrorAction SilentlyContinue
+                $TestList = Get-ChildItem -LiteralPath $Path -Recurse -File -filter *.tests.ps1 -ErrorAction SilentlyContinue
             }
             else {
-                $TestList = Get-ChildItem -LiteralPath $Path -File -ErrorAction SilentlyContinue
+                $TestList = Get-ChildItem -LiteralPath $Path -File -filter *.tests.ps1 -ErrorAction SilentlyContinue
             }
         }
         Catch {
