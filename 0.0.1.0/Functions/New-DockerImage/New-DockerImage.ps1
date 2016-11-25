@@ -1,9 +1,14 @@
 Function New-DockerImage {
     [CmdletBinding()]
-    param (
-        [String]$Name
-    )
+<#
+.SYNOPSIS
+ This function will trigger a docker build.
 
+.EXAMPLE
+New-DockerImage
+
+#>
+    param ()
     Try {
         Write-Verbose -Message "Starting the Docker image build process."
         docker build -t pestener .

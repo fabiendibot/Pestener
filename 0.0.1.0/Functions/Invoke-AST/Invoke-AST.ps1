@@ -1,5 +1,17 @@
 Function Get-ASTFromInput {
 	[CmdletBinding()]
+	[OutputType([System.Management.Automation.Language.ScriptBlockAst])]
+	<#
+.SYNOPSIS
+ This function will create an AST object from raw text.
+
+.PARAMETER Content
+The raw content you wanna parse to an AST object
+
+.EXAMPLE
+Get-ASTFromInput -Content $Content
+#>
+
 	param(
 		[Parameter(Mandatory)]$Content
 	)
@@ -9,8 +21,20 @@ Function Get-ASTFromInput {
 
 Function Get-TestNameAndTestBlock {
 	[OutputType([String])]
+<#
+.SYNOPSIS
+ This function will parse every Describe blocks and InModulscope blocks into a collection storing name and value of each blocks.
+ If InmoduleScope block contains describe blocks, this function, should avoid adding describe blocks another time when the parsing for inmodulscope is finish.
+
+.PARAMETER Content
+This parameter is the content of the pester sfript you want to parse.
+
+.EXAMPLE
+Get-TestNameAndTestBlock -Content (Get-Content D:\Path\To\Some\File.ps1 -raw)
+
+#>
 	param(
-		[Parameter()]
+		[Parameter(Mandatory)]
 		[String]$Content
 	)
 	
@@ -19,21 +43,21 @@ Function Get-TestNameAndTestBlock {
 	$output = @()
     $DescribesTreated = @()
 
-    $ModuleScopeASTs = $commandAST | ? { $PSItem.GetCommandName() -eq 'InModuleScope' }
-    $describeASTs = $commandAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+    $ModuleScopeASTs = $commandAST | Where-Object { $PSItem.GetCommandName() -eq 'InModuleScope' }
+    $describeASTs = $commandAST | Where-Object {$PSItem.GetCommandName() -eq 'Describe'}
 
     # InmoduleScope
     $i = 0
     if ($ModuleScopeASTS) {
         Foreach ($ModuleScope in $ModuleScopeASTs) {
-            $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object -FilterScript {$PSitem.Value -ne 'InModuleScope'}
+            $InModuleScopeElement = $ModuleScope.CommandElements | Select-Object -First 2 | Where-Object  {$PSitem.Value -ne 'InModuleScope'}
 
             # Check if Descibes stored in InModuleScope
             if ($ModuleScope.Extent.Text -match "Describe+.*") { 
                 
                 $TempAST = Get-ASTFromInput -Content $($ModuleScope.Extent.Text)
                 $CommandTempAST = $TempAST.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst]}, $true)
-                $TempdescribeASTs = $commandTempAST | Where-Object -FilterScript {$PSItem.GetCommandName() -eq 'Describe'}
+                $TempdescribeASTs = $commandTempAST | Where-Object {$PSItem.GetCommandName() -eq 'Describe'}
 
                 Switch -Exact ($TempdescribeASTs.CommandElements.StringConstantType) {
 			
@@ -48,7 +72,7 @@ Function Get-TestNameAndTestBlock {
             }
 
             # Change if InModuleScope double detected 
-            [Array]$Doubles = $output | ? { $_.Name -eq $($InModuleScopeElement.Value) }
+            [Array]$Doubles = $output | Where-Object { $PSitem.Name -eq $($InModuleScopeElement.Value) }
 
             if ($doubles)  {
                 $Name = $($InModuleScopeElement.Value) + "$($i)"

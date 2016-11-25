@@ -9,21 +9,22 @@ Provides an enhanced utilization of the Pester framework. Thanks to the Docker
  if you want to have the NUnit Exported or Not and if it needs to stop the build.
 Like that you can use this tools with things like TeamCity, Jenkins or TravisCI.
  
+.PARAMETER PesterFile
+This parameter indicate the PesterFile to parse.
+
 .PARAMETER TestPath
 This parameter indicates the location of every Pester tests you want to be run.
  
-.PARAMETER Image
-This is the name you want to use for the container image that you will build on the 
-Jenkins.
- 
-.PARAMETER OutputXML
-This parameter will indicate to the script if you want it to export the XML file in the 
-mDocker mounted volume
-
+.PARAMETER NewImage
+Use this switch if you want to generate a new docker image.
  
 .PARAMETER DockerFile
-This is the full path of the DockerFile used to build the Docker image
+This is the path where you want to generate your dockerfile
  
+ .PARAMETER Workspace
+This is the path where is stored your workspace, a common data path, if you want to share artifact with your contianers.
+It'll be mounted aas C:\Workspace in the container.
+
 .PARAMETER From
 Which docker image should be used at first to build your own one.
  
@@ -33,24 +34,30 @@ The fullname of the maintener of the image
 .PARAMETER MaintenerMail
 The maintenet mail adress
 
+.PARAMETER MinRunspaces
+
+.PARAMETER MaxRunspaces
+
+
 .EXAMPLE
-Import-Module Pestener
-Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Workspace D:\Git\Pestener -TestPath D:\temp -DockerFile D:\Git\Pestener -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
+Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -Workspace D:\Git\Pestener -TestPath D:\temp -DockerFile D:\Git\Pestener -Maintener "Fabien Dibot" -MaintenerMail "fdibot@pwrshell.net"
 
 #>
 
     param (
-
+        [Parameter(Mandatory)]
         [String]$PesterFile,
-        [String]$Image = "pestener",
-        [Switch]$OutputXML,
+        [Parameter(Mandatory)]
         [String]$Workspace,
+        [Parameter(Mandatory)]
         [String]$TestPath,
         [String]$DockerFile,
         [String]$from = 'microsoft/nanoserver',
         [String]$Maintener,
         [String]$MaintenerMail,
-        [Switch]$NewImage
+        [Switch]$NewImage,
+        [int]$MinRunspaces = 1,
+        [int]$MaxRunspaces = 5
 
     )
 
@@ -59,9 +66,6 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
     }
     PROCESS {
         $apartmentstate = "MTA"
-        [int]$MinRunspaces = 1
-        [int]$MaxRunspaces = 5
-        $showerrors  = $true
         $pool                 = [RunspaceFactory]::CreateRunspacePool($MinRunspaces,$MaxRunspaces)
         $pool.ApartmentState  = $apartmentstate
         $pool.CleanupInterval =  (New-TimeSpan -Minutes 1)
@@ -78,7 +82,8 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
             )
 
             try {
-                $cmdOutput = cmd /c "docker run -ti -v ${testmount}:${PesterPath} -v ${workspace}:${WorkspacePath} pestener" '2>&1'
+                #$cmdOutput = 
+                cmd /c "docker run -ti -v ${testmount}:${PesterPath} -v ${workspace}:${WorkspacePath} pestener" '2>&1'
             }
             catch {  }
 	    }   
@@ -110,23 +115,21 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         }
 
         if ($NewImage) {
-            
+            # Verify that all needed arguments are here.
+            if (!(($DockerFile) -and ($Maintener) -and ($MaintenerMail))) {}
+                
             # Create the new docker file
-            New-DockerFile -Path $DockerFile -OutPutXML -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
+            New-DockerFile -Path $DockerFile -From $from -Maintener $Maintener -MaintenerMail $MaintenerMail
 
             # Build the new image
-            New-DockerImage -Name $image
-
+            New-DockerImage
         }
         
 
         # Start a container for each Pester tests file
-        # Bosser sur les définitions de variables qui ne sont pas claires !!!
         
         $Tests = Get-ChildItem -LiteralPath $TestPath -Recurse -File
 
-        # Add a $i variable to find the last started container and use a docker wait
-        $i = $Tests.count
         $Tests | ForEach-Object {
 
             $DirectoryName = $($PSItem.FullName).split('\')[-2]
@@ -143,21 +146,6 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
         # Wait for runspaces to complete
         while ($runspaces.Status.IsCompleted -notcontains $true) {}
 
-       <# if ($showerrors -eq $true) {
-        $errors =  [System.Collections.ArrayList]@()
-        foreach ($runspace in $runspaces) { 
-        [void]$errors.Add($runspace.Pipe.EndInvoke($runspace.Status))
-        $runspace.Pipe.Dispose()
-        }
-        $errors 
-        }
-        else {
-        foreach ($runspace in $runspaces ) { 
-        $null = $runspace.Pipe.EndInvoke($runspace.Status)
-        $runspace.Pipe.Dispose()
-        }
-        }#>
-
         $pool.Close() 
         $pool.Dispose()
     }
@@ -167,6 +155,5 @@ Start-Pestener -PesterFile D:\git\Pestener\Tests\demo.tests.ps1 -OutputXML -Work
 
 
 }
-
 
 Export-ModuleMember Start-Pestener
