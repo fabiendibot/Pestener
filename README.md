@@ -1,3 +1,5 @@
+![Pestener](https://github.com/fabiendibot/Pestener/blob/master/pics/Pestener.png)
+
 # Pestener
 
 [![Build status](https://ci.appveyor.com/api/projects/status/tjpan8uo5jpe61vn?svg=true)](https://ci.appveyor.com/project/fabiendibot/Pestener) <-- Can't test on Appveyor currently building a Jenkins server :)
