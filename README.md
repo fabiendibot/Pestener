@@ -1,8 +1,3 @@
-[![licence badge]][licence]
-[![stars badge]][stars]
-[![forks badge]][forks]
-[![issues badge]][issues]
-
 ![Pestener](https://github.com/fabiendibot/Pestener/blob/master/pics/Pestener.png)
 
 # Pestener
