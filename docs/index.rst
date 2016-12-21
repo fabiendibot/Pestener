@@ -16,6 +16,7 @@ How it works ?
 =================
 
 The module will do few things:
+
 * Build a Docker image if needed using nanoserver or windowscore images.
 * Split Pester tests files and create a folder with a specific Pester file in it.
 * Run docker containers in runspaces in order to use hyperthreading as much as possible
@@ -23,3 +24,12 @@ The module will do few things:
     * The pester directory is mounted 
     * The container will start automatically the pester test
     * Each container will create a Nunit.XML file in order to send it to your CI tools
+
+=================
+How the module split Pester files ?
+=================
+
+The module uses AST (Abstract Syntax Tree) in order to parse the file.
+Each describe block is splitted (except if it's in a inModuleScope block) and a folder with the describe block name trimmed is create with a pester file in it containing the describe block.
+This is very important to understand this logic, because it means that if you load some code outside these two blocks, your tests will fail.
+You must store all your spefici code in Describe blocks, even if it means repeat it during all along your test script.
