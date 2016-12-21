@@ -2,7 +2,7 @@
 
 # Pestener
 
-[![Build status](https://ci.appveyor.com/api/projects/status/tjpan8uo5jpe61vn?svg=true)](https://ci.appveyor.com/project/fabiendibot/Pestener) <-- Can't test on Appveyor currently building a Jenkins server :)
+[![Documentation Status](https://readthedocs.org/projects/pestener/badge/?version=latest)](http://pestener.readthedocs.io/en/latest/?badge=latest) [![Build status](https://ci.appveyor.com/api/projects/status/tjpan8uo5jpe61vn?svg=true)](https://ci.appveyor.com/project/fabiendibot/Pestener) <-- Can't test on Appveyor currently building a Jenkins server :)
 
 This version is beta, please do not use it in production right now :)
 
