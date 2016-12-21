@@ -1,5 +1,3 @@
-**Welcome to Pestener**
-
 =================
 What is Pestener ?
 =================
@@ -8,3 +6,20 @@ Pestener is the concatenation of Pester & Docker.
 
 Pester is the PowerShell most popular Unit test framework. Open Sourced and community driven, it's now included by default in Windows 10 & Windows Server 2016.
 You can use it from PowerShell v2 up to v5 :)
+
+If you don't know what Docker it means you live in another galaxy AHAHAHA :)
+
+So, this PowerShell module is made to make your life easier during very long Pester tests splitting Pester tests files in separate Docker containers running docker on Windows box.
+
+=================
+How it works ?
+=================
+
+The module will do few things:
+* Build a Docker image if needed using nanoserver or windowscore images.
+* Split Pester tests files and create a folder with a specific Pester file in it.
+* Run docker containers in runspaces in order to use hyperthreading as much as possible
+
+    * The pester directory is mounted 
+    * The container will start automatically the pester test
+    * Each container will create a Nunit.XML file in order to send it to your CI tools
